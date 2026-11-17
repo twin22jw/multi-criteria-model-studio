@@ -10,8 +10,8 @@
   const saveTimers = new Map();
 
   root.innerHTML = `
-    <div class="hero"><div><p class="eyebrow">GEOG 328 · SPATIAL REGRESSION MODEL</p><h1>Housing Price in Greater Victoria</h1><p class="lede">Work with your group to propose housing-price factors, predict their signs, and explain why a relationship might change across Greater Victoria.</p></div><div class="formula"><b>Discuss with your group</b><span>01 · Which factors matter?</span><span>02 · Positive or negative?</span><span>03 · Urban versus rural?</span></div></div>
-    <div class="collab-prompts"><div><span>Q1</span><p>What factors might influence housing prices in Greater Victoria?</p></div><div><span>Q2</span><p>For each factor, would you expect a positive (+) or negative (−) relationship with price? Why?</p></div><div><span>Q3</span><p>Which relationship might differ between urban and rural areas?</p></div></div>
+    <div class="hero"><div><p class="eyebrow">GEOG 328 · SPATIAL REGRESSION MODEL</p><h1>Housing Price in Greater Victoria</h1><p class="lede">Discuss at least five housing-price factors, predict the direction of each relationship, and consider how relationships vary across Greater Victoria.</p></div><div class="formula"><b>Discuss with your group</b><span>01 · Name five or more factors</span><span>02 · Positive or negative?</span><span>03 · Equally strong everywhere?</span><span>04 · Urban versus rural?</span></div></div>
+    <div class="collab-prompts"><div><span>Q1</span><p>What factors might influence housing prices in Greater Victoria? <b>List at least five factors.</b></p></div><div><span>Q2</span><p>For each factor, would you expect a positive (+) or negative (−) relationship with <b>housing prices</b>? Why?</p></div><div><span>Q3</span><p>Do you think these relationships are equally strong across Greater Victoria? Why or why not?</p></div><div><span>Q4</span><p>Choose one factor. How might its relationship with housing prices differ between urban and rural areas?</p></div></div>
     <div id="collabStatus" class="collab-status" aria-live="polite"></div>
     <div id="collabContent"></div>`;
 
@@ -46,10 +46,10 @@
   function renderWelcome() {
     $('#collabContent').innerHTML = `<div class="collab-entry">
       <section class="collab-card"><p class="eyebrow">STUDENT MODE</p><h2>Create your group</h2><p>Use the Classroom ID from your instructor, choose your own group name, and open a shared workspace. Your group can see other groups only when the instructor opens comparison.</p>
-      <form id="createGroup"><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Your group name<input name="name" required minlength="2" maxlength="40" placeholder="e.g. Coastline Explorers" autocomplete="off"></label><button class="primary">Create group workspace</button></form>
+      <form id="createGroup"><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" placeholder="e.g. F26GEOG328-1" autocomplete="off"></label><label>Your group name<input name="name" required minlength="2" maxlength="40" placeholder="e.g. Hugag" autocomplete="off"></label><button class="primary">Create group workspace</button></form>
       <form id="studentJoin"><h3>Join a group already created</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Group code from a teammate<input name="code" required autocomplete="off"></label><button class="secondary">Join existing group</button></form></section>
       <section class="collab-card"><p class="eyebrow">INSTRUCTOR MODE</p><h2>Set up your classroom</h2><p>Define the Classroom ID and Instructor secret here. Students create their own groups until the maximum you set is reached.</p>
-      <form id="createClass"><label>Classroom ID<input name="room" required minlength="4" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{3,31}" placeholder="e.g. GEOG328-NOV17" autocomplete="off"></label><label>Instructor secret<input name="secret" required minlength="8" maxlength="100" type="password" placeholder="At least 8 characters" autocomplete="new-password"></label><label>Maximum number of groups (2–20)<input name="groups" type="number" min="2" max="20" value="20" required></label><button class="primary">Create classroom</button></form>
+      <form id="createClass"><label>Classroom ID<input name="room" required minlength="4" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{3,31}" placeholder="e.g. F26GEOG328-1" autocomplete="off"></label><label>Instructor secret<input name="secret" required minlength="8" maxlength="100" type="password" placeholder="At least 8 characters" autocomplete="new-password"></label><label>Maximum number of groups (2–20)<input name="groups" type="number" min="2" max="20" value="20" required></label><button class="primary">Create classroom</button></form>
       <form id="teacherJoin"><h3>Open an existing classroom</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Instructor secret<input name="secret" required type="password" autocomplete="off"></label><button class="secondary">Open instructor dashboard</button></form></section></div>`;
     $('#createGroup').addEventListener('submit', async event => {
       event.preventDefault();
@@ -111,28 +111,28 @@
   function factorTable(group, editable) {
     const factors = group.document.factors;
     if (!factors.length && !editable) return '<p class="collab-empty">No factors added yet.</p>';
-    return `<div class="collab-factor-list">${factors.map(f => editable ? `
-      <div class="collab-factor collab-editor" data-factor="${esc(f.id)}">
-        <div class="collab-factor-top"><label>Factor<input data-field="name" maxlength="80" value="${esc(f.name)}" aria-label="Factor name"></label>
-          <label>Expected relationship<select data-field="direction" aria-label="Expected relationship">
+    return `<div class="collab-response-table"><div class="collab-table-head"><span>Factor / sign</span><span>Urban areas</span><span>Rural areas</span></div>
+      ${factors.map(f => editable ? `<div class="collab-table-row collab-factor collab-editor" data-factor="${esc(f.id)}">
+        <div class="collab-factor-fields"><label>Factor<input data-field="name" maxlength="80" value="${esc(f.name)}" aria-label="Factor name"></label>
+          <label>Sign<select data-field="direction" aria-label="Expected relationship">
             <option value="positive" ${f.direction === 'positive' ? 'selected' : ''}>Positive (+)</option>
             <option value="negative" ${f.direction === 'negative' ? 'selected' : ''}>Negative (−)</option>
             <option value="uncertain" ${f.direction === 'uncertain' ? 'selected' : ''}>Uncertain (?)</option>
-          </select></label><button class="collab-delete" data-delete="${esc(f.id)}" title="Remove factor" aria-label="Remove factor">×</button></div>
-        <label>Why that sign?<textarea data-field="reason" maxlength="400" rows="2">${esc(f.reason)}</textarea></label>
-        <label>How might this relationship change across places?<textarea data-field="spatial" maxlength="400" rows="2">${esc(f.spatial)}</textarea></label>
-      </div>` : `<div class="collab-read-factor"><b>${esc(f.name)}</b><strong class="${esc(f.direction)}">${f.direction === 'positive' ? '+ Positive' : f.direction === 'negative' ? '− Negative' : '? Uncertain'}</strong><p>${esc(f.reason) || 'No reason added yet.'}</p><small>${esc(f.spatial) || 'No spatial note yet.'}</small></div>`).join('')}</div>`;
+          </select></label><button class="collab-delete" data-delete="${esc(f.id)}" title="Remove factor" aria-label="Remove factor">×</button></div><label>Why this sign?<textarea data-field="reason" maxlength="400" rows="2" placeholder="Explain your expectation">${esc(f.reason || '')}</textarea></label>
+        <div><label>Urban areas<textarea data-field="urban" maxlength="400" rows="3" placeholder="How strong might the relationship be?">${esc(f.urban || '')}</textarea></label></div>
+        <div><label>Rural areas<textarea data-field="rural" maxlength="400" rows="3" placeholder="How might it differ here?">${esc(f.rural || '')}</textarea></label></div>
+      </div>` : `<div class="collab-table-row collab-read-factor"><div data-label="Factor / sign"><b>${esc(f.name)} <span class="${esc(f.direction)}">(${f.direction === 'positive' ? '+' : f.direction === 'negative' ? '−' : '?'})</span></b>${f.reason ? `<small>${esc(f.reason)}</small>` : ''}${f.spatial ? `<small>Earlier spatial note: ${esc(f.spatial)}</small>` : ''}</div><div data-label="Urban areas">${esc(f.urban) || '—'}</div><div data-label="Rural areas">${esc(f.rural) || '—'}</div></div>`).join('')}</div>`;
   }
   function ownGroup(group) {
-    return `<section class="collab-card collab-own" data-group="${esc(group.id)}"><div class="collab-card-head"><div><p class="eyebrow">YOUR GROUP WORKSPACE</p><h2>${esc(group.label)}</h2></div><span class="collab-count">${group.document.factors.length} factors</span></div>
-      <p class="collab-help">Add possible predictors. A coefficient's sign describes association while other listed variables are held constant; it does not by itself establish causation.</p>
+    return `<section class="collab-card collab-own" data-group="${esc(group.id)}"><div class="collab-card-head"><div><p class="eyebrow">YOUR GROUP WORKSPACE</p><h2>${esc(group.label)}</h2></div><span class="collab-count">${group.document.factors.length} / 5 factors suggested</span></div>
+      <p class="collab-help">List at least five factors and predict each sign. For Q4, choose one factor and explain its relationship in the urban and rural columns.</p>
       ${factorTable(group, true)}<button class="secondary" id="addFactor" ${group.document.factors.length >= 10 ? 'disabled' : ''}>+ Add a factor</button>
-      <div class="collab-note collab-editor"><label for="spatialNote">Q3 · Which factor may behave differently in urban versus rural areas? Explain.</label><textarea id="spatialNote" rows="4" maxlength="2000" placeholder="For example: Think about access, land area, density, or distance…">${esc(group.document.spatialNote)}</textarea></div>
+      <div class="collab-note collab-editor"><label for="spatialNote">Q3 · Are these relationships equally strong across Greater Victoria? Why or why not?</label><textarea id="spatialNote" rows="4" maxlength="2000" placeholder="Consider how neighbourhoods, access, and land use vary…">${esc(group.document.spatialNote)}</textarea></div>
       <p class="collab-save-hint">Edits save automatically. Share the group code above with teammates so they can contribute.</p></section>`;
   }
   function readGroup(group) {
     return `<section class="collab-card collab-read"><div class="collab-card-head"><h3>${esc(group.label)}</h3><span class="collab-count">${group.document.factors.length} factors</span></div>${factorTable(group, false)}
-      <div class="collab-note"><b>Urban–rural discussion</b><p>${esc(group.document.spatialNote) || 'No response yet.'}</p></div>
+      <div class="collab-note"><b>Q3 · Equally strong across Greater Victoria?</b><p>${esc(group.document.spatialNote) || 'No response yet.'}</p></div>
       <small>Last saved: ${group.updatedAt ? new Date(group.updatedAt).toLocaleTimeString() : '—'}</small></section>`;
   }
   function renderDashboard() {
@@ -163,7 +163,7 @@
       });
       $('#addFactor').addEventListener('click', async () => {
         const id = crypto.randomUUID();
-        try { status('Adding factor…'); current = await api('/classrooms/' + auth.room + '/factors/' + id, 'PUT', { name: 'New factor', direction: 'uncertain', reason: '', spatial: '' }); renderDashboard(); $('[data-factor="' + id + '"] [data-field="name"]').select(); status('Factor added. Edit its name and sign.'); }
+        try { status('Adding factor…'); current = await api('/classrooms/' + auth.room + '/factors/' + id, 'PUT', { name: 'New factor', direction: 'uncertain', urban: '', rural: '' }); renderDashboard(); $('[data-factor="' + id + '"] [data-field="name"]').select(); status('Factor added. Edit its name and sign.'); }
         catch (error) { status(error.message, true); }
       });
     }
@@ -178,7 +178,7 @@
         status('Saving…');
         if (target.closest('.collab-factor')) {
           const row = target.closest('.collab-factor'), id = row.dataset.factor;
-          const payload = Object.fromEntries(['name', 'direction', 'reason', 'spatial'].map(key => [key, row.querySelector('[data-field="' + key + '"]').value]));
+          const payload = Object.fromEntries(['name', 'direction', 'reason', 'urban', 'rural'].map(key => [key, row.querySelector('[data-field="' + key + '"]').value]));
           if (!payload.name.trim()) { status('Add a factor name before saving.', true); return; }
           current = await api('/classrooms/' + auth.room + '/factors/' + id, 'PUT', payload);
         } else if (target.id === 'spatialNote') {
@@ -221,3 +221,4 @@
     }
   }
 })();
+
