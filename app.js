@@ -44,7 +44,7 @@ const elevationMask = dem.map(value => Number(value < 1900));
 const slopeMask = slope.map(value => Number(value < 30));
 const aspectMask = aspect.map(value => Number(!['N', 'NE', 'NW'].includes(value)));
 const defaultWater = [19, 20, 25, 26, 31];
-let landMask = Array(N * N).fill(1);
+const landMask = Array(N * N).fill(1);
 defaultWater.forEach(i => { landMask[i] = 0; });
 const student = { elevation: Array(N * N).fill(null), final: Array(N * N).fill(null) };
 let selectedCell = 20;
@@ -77,7 +77,7 @@ function staticCells(values, kind) {
     if (kind === 'elevation') style = `background:${terrainColor(value, Math.min(...dem), Math.max(...dem))}`;
     if (kind === 'slope') { style = `background:${terrainColor(value, 0, 55)}`; display = value + '%'; }
     if (kind === 'aspect') style = `background:${['N', 'NE', 'NW'].includes(value) ? '#d6e0db' : '#e7dfbc'}`;
-    if (kind === 'score') { style = `background:${scoreColor(value)}`; display = value; }
+    if (kind === 'score') { style = `background:${value === null ? '#edf0e7' : scoreColor(value)}`; display = value === null ? '—' : value; }
     return `<div class="${className}" ${style ? `style="${style}"` : ''} aria-label="${cellPosition(i)}: ${display}">${display}</div>`;
   }).join('');
 }
@@ -186,7 +186,12 @@ for (const type of ['elevation', 'final']) {
 
 function renderWeights() {
   const total = totalWeight();
-  for (const key of Object.keys(weights)) $('#weight' + key[0].toUpperCase() + key.slice(1) + 'Value').textContent = total ? (weights[key] / total * 100).toFixed(0) + '%' : '0%';
+  for (const key of Object.keys(weights)) {
+    const title = key[0].toUpperCase() + key.slice(1);
+    const share = total ? (weights[key] / total * 100).toFixed(0) + '%' : '0%';
+    $('#weight' + title + 'Value').textContent = share;
+    $('#effective' + title).textContent = share;
+  }
   $('#weightSummary').textContent = total ? `Input total ${total}; effective shares are normalized to 100%.` : 'All weights are zero. Raise at least one weight to calculate the index.';
 }
 $$('[data-weight]').forEach(input => input.addEventListener('input', () => {
@@ -198,32 +203,6 @@ $('#resetWeights').addEventListener('click', () => {
   $$('[data-weight]').forEach(input => { input.value = weights[input.dataset.weight]; });
   renderIndex();
 });
-
-function renderWater() {
-  $('#waterEditor').innerHTML = landMask.map((value, i) => `<button type="button" class="raster-cell ${value ? 'land-cell' : 'water-cell'}" data-water-cell="${i}" aria-pressed="${!value}" aria-label="${cellPosition(i)}: ${value ? 'land' : 'water'}; click to toggle">${value ? '1' : '0'}</button>`).join('');
-}
-function waterChanged() {
-  $('#finalAnswer').hidden = true;
-  $('#finalFeedback').textContent = 'Water changed. Compare your final map with the updated answer.';
-  renderWater();
-  renderBinary();
-  renderIndex();
-}
-$('#waterEditor').addEventListener('click', event => {
-  const button = event.target.closest('[data-water-cell]');
-  if (!button) return;
-  const i = Number(button.dataset.waterCell);
-  landMask[i] = 1 - landMask[i];
-  selectedCell = i;
-  waterChanged();
-  $('#waterEditor [data-water-cell="' + i + '"]').focus();
-});
-$('#resetWater').addEventListener('click', () => {
-  landMask.fill(1);
-  defaultWater.forEach(i => { landMask[i] = 0; });
-  waterChanged();
-});
-$('#clearWater').addEventListener('click', () => { landMask.fill(1); waterChanged(); });
 
 function outputCells(masked) {
   return landMask.map((land, i) => {
@@ -249,12 +228,19 @@ function renderDetail() {
 }
 function renderIndex() {
   renderWeights();
-  for (const key of ['elevation', 'slope', 'aspect']) $('#score' + key[0].toUpperCase() + key.slice(1)).innerHTML = staticCells(scoreMaps[key], 'score');
+  const total = totalWeight();
+  for (const key of ['elevation', 'slope', 'aspect']) {
+    const title = key[0].toUpperCase() + key.slice(1);
+    $('#score' + title).innerHTML = staticCells(scoreMaps[key], 'score');
+    const contributions = scoreMaps[key].map(value => total ? Math.round(value * weights[key] / total) : null);
+    $('#weighted' + title).innerHTML = staticCells(contributions, 'score');
+  }
+  $('#indexPreview').innerHTML = outputCells(false);
   $('#indexRaw').innerHTML = outputCells(false);
   $('#indexFinal').innerHTML = outputCells(true);
   renderDetail();
 }
-for (const id of ['indexRaw', 'indexFinal']) $('#' + id).addEventListener('click', event => {
+for (const id of ['indexPreview', 'indexRaw', 'indexFinal']) $('#' + id).addEventListener('click', event => {
   const button = event.target.closest('[data-index-cell]');
   if (!button) return;
   selectedCell = Number(button.dataset.indexCell);
@@ -262,6 +248,6 @@ for (const id of ['indexRaw', 'indexFinal']) $('#' + id).addEventListener('click
   $('#' + id + ' [data-index-cell="' + selectedCell + '"]').focus();
 });
 
-renderWater();
+$('#waterMaskDisplay').innerHTML = staticCells(landMask, 'land');
 renderBinary();
 renderIndex();
