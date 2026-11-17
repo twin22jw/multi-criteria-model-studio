@@ -48,13 +48,23 @@
     const dLat=(a[1]-b[1])*111.2, dLon=(a[0]-b[0])*74.2;
     return Math.hypot(dLat,dLon);
   }
+  function inRing(point,ring) {
+    let inside=false;
+    for(let i=0;i<ring.length;i++){
+      const a=ring[i],b=ring[(i+1)%ring.length];
+      if((a[1]>point[1])!==(b[1]>point[1]) && point[0]<(b[0]-a[0])*(point[1]-a[1])/(b[1]-a[1])+a[0])inside=!inside;
+    }
+    return inside;
+  }
 
   function makeHouses() {
-    const downtown=geo.victoria.areas.find(x=>x.name==='Downtown').center;
+    const downtown=[-123.3656,48.4284];
     return geo.victoria.areas.flatMap((area,j)=>[0,1].map((_,k)=>{
-      const n=j*2+k, point=[area.center[0]+(seed(n+9)-.5)*.0025,area.center[1]+(seed(n+49)-.5)*.0021];
-      const floor=Math.round(75+seed(n+20)*145), age=Math.round(5+seed(n+61)*88), distance=Math.max(.2,haversine(point,downtown));
-      const neighbourhoodPremium= area.name==='Downtown'?55:area.name==='Rockland'?85:area.name==='Gonzales'?75:area.name==='Burnside'?-60:0;
+      const n=j*2+k, candidate=[area.center[0]+(seed(n+9)-.5)*.003,area.center[1]+(seed(n+49)-.5)*.0025];
+      const point=area.rings.some(r=>inRing(candidate,r))?candidate:area.center;
+      const distance=Math.max(.2,haversine(point,downtown));
+      const floor=Math.round(140+seed(n+20)*120+distance*3.2), age=Math.round(5+seed(n+61)*75);
+      const neighbourhoodPremium= area.name==='Oak Bay'?85:area.name==='Sooke'?-50:area.name==='Victoria'?55:0;
       const observed= Math.round(325+4.6*floor-31*distance-3.1*age+neighbourhoodPremium+(seed(n+75)-.5)*95);
       return {point,area:area.name,floor,age,distance,observed};
     }));
@@ -70,6 +80,12 @@
     qa('[data-h-view]').forEach(x=>x.classList.toggle('active',x.dataset.hView===hState.view));
     const svg=q('#hMap');svg.replaceChildren();
     geo.victoria.areas.forEach(area=>svg.append(svgEl('path',{d:pathFor(area,'victoria'),class:'reg-boundary'})));
+    geo.victoria.areas.filter(area=>['Sooke','Metchosin','Langford','Saanich','Victoria','Sidney'].includes(area.name)).forEach(area=>{
+      const [x,y]=project(area.center,geo.victoria.bounds,'victoria');
+      const label=svgEl('text',{x:x.toFixed(1),y:y.toFixed(1),class:'reg-place-label'});
+      label.textContent=area.name;
+      svg.append(label);
+    });
     const values=houses.map(h=>hState.view==='predicted'?predictHouse(h,b):hState.view==='observed'?h.observed:h.observed-predictHouse(h,b));
     const low=hState.view==='residual'?-400:0,high=hState.view==='residual'?400:1800;
     houses.forEach((h,i)=>{
