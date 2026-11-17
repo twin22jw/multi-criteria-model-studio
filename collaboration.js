@@ -10,7 +10,7 @@
   const saveTimers = new Map();
 
   root.innerHTML = `
-    <div class="hero"><div><p class="eyebrow">GEOG 328 · SPATIAL REGRESSION MODEL</p><h1>In-class Activity</h1><p class="lede">Work with your group to propose housing-price factors, predict their signs, and explain why a relationship might change across Greater Victoria.</p></div><div class="formula"><b>Discuss with your group</b><span>01 · Which factors matter?</span><span>02 · Positive or negative?</span><span>03 · Urban versus rural?</span></div></div>
+    <div class="hero"><div><p class="eyebrow">GEOG 328 · SPATIAL REGRESSION MODEL</p><h1>Housing Price in Greater Victoria</h1><p class="lede">Work with your group to propose housing-price factors, predict their signs, and explain why a relationship might change across Greater Victoria.</p></div><div class="formula"><b>Discuss with your group</b><span>01 · Which factors matter?</span><span>02 · Positive or negative?</span><span>03 · Urban versus rural?</span></div></div>
     <div class="collab-prompts"><div><span>Q1</span><p>What factors might influence housing prices in Greater Victoria?</p></div><div><span>Q2</span><p>For each factor, would you expect a positive (+) or negative (−) relationship with price? Why?</p></div><div><span>Q3</span><p>Which relationship might differ between urban and rural areas?</p></div></div>
     <div id="collabStatus" class="collab-status" aria-live="polite"></div>
     <div id="collabContent"></div>`;
@@ -45,11 +45,25 @@
   }
   function renderWelcome() {
     $('#collabContent').innerHTML = `<div class="collab-entry">
-      <section class="collab-card"><p class="eyebrow">STUDENT MODE</p><h2>Join your group</h2><p>Enter the classroom ID and the code your instructor gave your group. Until the instructor opens comparison, you see only your group's work.</p>
-      <form id="studentJoin"><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Group code<input name="code" required autocomplete="off"></label><button class="primary">Open group workspace</button></form></section>
-      <section class="collab-card"><p class="eyebrow">INSTRUCTOR MODE</p><h2>Watch every group</h2><p>Open an existing class with your instructor secret, or create a new class and share its group codes.</p>
-      <form id="teacherJoin"><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Instructor secret<input name="secret" required type="password" autocomplete="off"></label><button class="secondary">Open instructor dashboard</button></form>
-      <form id="createClass"><label>Number of groups<input name="groups" type="number" min="2" max="20" value="6" required></label><button class="primary">Create classroom</button></form></section></div>`;
+      <section class="collab-card"><p class="eyebrow">STUDENT MODE</p><h2>Create your group</h2><p>Use the Classroom ID from your instructor, choose your own group name, and open a shared workspace. Your group can see other groups only when the instructor opens comparison.</p>
+      <form id="createGroup"><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Your group name<input name="name" required minlength="2" maxlength="40" placeholder="e.g. Coastline Explorers" autocomplete="off"></label><button class="primary">Create group workspace</button></form>
+      <form id="studentJoin"><h3>Join a group already created</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Group code from a teammate<input name="code" required autocomplete="off"></label><button class="secondary">Join existing group</button></form></section>
+      <section class="collab-card"><p class="eyebrow">INSTRUCTOR MODE</p><h2>Set up your classroom</h2><p>Define the Classroom ID and Instructor secret here. Students create their own groups until the maximum you set is reached.</p>
+      <form id="createClass"><label>Classroom ID<input name="room" required minlength="4" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{3,31}" placeholder="e.g. GEOG328-NOV17" autocomplete="off"></label><label>Instructor secret<input name="secret" required minlength="8" maxlength="100" type="password" placeholder="At least 8 characters" autocomplete="new-password"></label><label>Maximum number of groups (2–20)<input name="groups" type="number" min="2" max="20" value="20" required></label><button class="primary">Create classroom</button></form>
+      <form id="teacherJoin"><h3>Open an existing classroom</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Instructor secret<input name="secret" required type="password" autocomplete="off"></label><button class="secondary">Open instructor dashboard</button></form></section></div>`;
+    $('#createGroup').addEventListener('submit', async event => {
+      event.preventDefault();
+      const data = new FormData(event.currentTarget);
+      const room = String(data.get('room')).trim(), name = String(data.get('name')).trim();
+      try {
+        status('Creating group…');
+        const created = await api('/classrooms/' + encodeURIComponent(room) + '/groups', 'POST', { name }, '');
+        auth = { room: created.classroomId, secret: created.groupCode, role: 'student' };
+        sessionStorage.setItem(groupStore(auth.room), auth.secret);
+        history.replaceState(null, '', joinLink(auth.room));
+        current = created; renderDashboard(); startPolling(); status('Group created. Share your group code with your teammates.');
+      } catch (error) { status(error.message, true); }
+    });
     $('#studentJoin').addEventListener('submit', async event => {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
@@ -57,9 +71,9 @@
       try {
         status('Joining group…');
         const snapshot = await api('/join', 'POST', { classroomId: room, code: secret }, '');
-        auth = { room, secret, role: 'student' };
-        sessionStorage.setItem(groupStore(room), secret);
-        history.replaceState(null, '', joinLink(room));
+        auth = { room: snapshot.classroomId, secret, role: 'student' };
+        sessionStorage.setItem(groupStore(auth.room), secret);
+        history.replaceState(null, '', joinLink(auth.room));
         current = snapshot; renderDashboard(); startPolling(); status('Connected · changes refresh about every 2 seconds.');
       } catch (error) { status(error.message, true); }
     });
@@ -71,24 +85,26 @@
         status('Opening dashboard…');
         const snapshot = await api('/classrooms/' + encodeURIComponent(room), 'GET', undefined, secret);
         if (snapshot.role !== 'teacher') throw Error('Instructor secret is invalid');
-        auth = { room, secret, role: 'teacher' };
-        localStorage.setItem(teacherStore(room), secret);
-        history.replaceState(null, '', joinLink(room, true));
+        auth = { room: snapshot.classroomId, secret, role: 'teacher' };
+        localStorage.setItem(teacherStore(auth.room), secret);
+        history.replaceState(null, '', joinLink(auth.room, true));
         current = snapshot; renderDashboard(); startPolling(); status('Connected · all group responses are visible to you.');
       } catch (error) { status(error.message, true); }
     });
     $('#createClass').addEventListener('submit', async event => {
       event.preventDefault();
-      const count = Number(new FormData(event.currentTarget).get('groups'));
+      const data = new FormData(event.currentTarget);
+      const room = String(data.get('room')).trim();
+      const secret = String(data.get('secret')).trim();
+      const maxGroups = Number(data.get('groups'));
       try {
         status('Creating classroom…');
-        const created = await api('/classrooms', 'POST', { groupCount: count }, '');
-        auth = { room: created.classroomId, secret: created.teacherSecret, role: 'teacher', codes: created.groups };
+        const created = await api('/classrooms', 'POST', { classroomId: room, teacherSecret: secret, maxGroups }, '');
+        auth = { room: created.classroomId, secret, role: 'teacher' };
         localStorage.setItem(teacherStore(auth.room), auth.secret);
-        localStorage.setItem('mcms_codes_' + auth.room, JSON.stringify(created.groups));
         history.replaceState(null, '', joinLink(auth.room, true));
         current = await api('/classrooms/' + auth.room);
-        renderDashboard(); startPolling(); status('Classroom created. Save your instructor secret and share one code with each group.');
+        renderDashboard(); startPolling(); status('Classroom created. Share the Classroom ID with your students; they will name their own groups.');
       } catch (error) { status(error.message, true); }
     });
   }
@@ -112,7 +128,7 @@
       <p class="collab-help">Add possible predictors. A coefficient's sign describes association while other listed variables are held constant; it does not by itself establish causation.</p>
       ${factorTable(group, true)}<button class="secondary" id="addFactor" ${group.document.factors.length >= 10 ? 'disabled' : ''}>+ Add a factor</button>
       <div class="collab-note collab-editor"><label for="spatialNote">Q3 · Which factor may behave differently in urban versus rural areas? Explain.</label><textarea id="spatialNote" rows="4" maxlength="2000" placeholder="For example: Think about access, land area, density, or distance…">${esc(group.document.spatialNote)}</textarea></div>
-      <p class="collab-save-hint">Edits save automatically. Everyone with this group's code can contribute.</p></section>`;
+      <p class="collab-save-hint">Edits save automatically. Share the group code above with teammates so they can contribute.</p></section>`;
   }
   function readGroup(group) {
     return `<section class="collab-card collab-read"><div class="collab-card-head"><h3>${esc(group.label)}</h3><span class="collab-count">${group.document.factors.length} factors</span></div>${factorTable(group, false)}
@@ -124,12 +140,11 @@
     if (document.activeElement?.closest('.collab-editor')) return;
     const content = $('#collabContent');
     if (auth.role === 'teacher') {
-      const codes = auth.codes || JSON.parse(localStorage.getItem('mcms_codes_' + auth.room) || '[]');
       content.innerHTML = `<div class="collab-toolbar"><div><p class="eyebrow">INSTRUCTOR DASHBOARD</p><h2>Classroom ${esc(auth.room)}</h2><p>All groups are visible here. Students see only their own group until you open comparison.</p></div>
         <button id="toggleReveal" class="${current.reveal ? 'secondary' : 'primary'}">${current.reveal ? 'Hide other groups from students' : 'Reveal all groups to students'}</button></div>
         <div class="collab-teacher-info"><div><b>Student link</b><code>${esc(joinLink(auth.room))}</code></div><div><b>Instructor link</b><code>${esc(joinLink(auth.room, true))}</code></div><div><b>Instructor secret</b><details><summary>Show secret for backup</summary><code>${esc(auth.secret)}</code></details></div></div>
-        ${codes.length ? `<details class="collab-codes"><summary>Group access codes · share one per group</summary><div>${codes.map(g => `<p><b>${esc(g.label)}</b> <code>${esc(g.code)}</code></p>`).join('')}</div></details>` : ''}
-        <div class="collab-group-grid">${current.groups.map(readGroup).join('')}</div>`;
+        <p class="collab-capacity"><b>${current.groups.length} / ${current.maxGroups} groups created</b> · Students choose group names. New groups appear here automatically.</p>
+        <div class="collab-group-grid">${current.groups.length ? current.groups.map(readGroup).join('') : '<p class="collab-empty">Waiting for students to create their groups…</p>'}</div>`;
       $('#toggleReveal').addEventListener('click', async () => {
         try { status('Updating visibility…'); current = await api('/classrooms/' + auth.room + '/reveal', 'PATCH', { reveal: !current.reveal }); renderDashboard(); status(current.reveal ? 'Comparison is open to all groups.' : 'Group answers are private again.'); }
         catch (error) { status(error.message, true); }
@@ -139,8 +154,13 @@
       if (!own) { status('Your group is unavailable. Rejoin with your code.', true); return; }
       const others = current.reveal ? current.groups.filter(g => g.id !== current.ownGroupId) : [];
       content.innerHTML = `<div class="collab-toolbar"><div><p class="eyebrow">STUDENT MODE</p><h2>Classroom ${esc(auth.room)}</h2></div><div class="collab-visibility">${current.reveal ? 'Comparison open · other groups are visible' : 'Private group work · other groups are hidden'}</div></div>
+        <div class="collab-share-code"><span><b>Your group code:</b> <code>${esc(auth.secret)}</code></span><button class="secondary" id="copyGroupCode">Copy code</button><small>Send this code to your teammates. They can use “Join a group already created.”</small></div>
         ${ownGroup(own)}
         ${others.length ? `<div class="collab-comparison"><h2>Compare with other groups</h2><p>These responses update while your classmates work. They are read-only here.</p><div class="collab-group-grid">${others.map(readGroup).join('')}</div></div>` : ''}`;
+      $('#copyGroupCode').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(auth.secret); status('Group code copied.'); }
+        catch { status('Copy the group code shown above.'); }
+      });
       $('#addFactor').addEventListener('click', async () => {
         const id = crypto.randomUUID();
         try { status('Adding factor…'); current = await api('/classrooms/' + auth.room + '/factors/' + id, 'PUT', { name: 'New factor', direction: 'uncertain', reason: '', spatial: '' }); renderDashboard(); $('[data-factor="' + id + '"] [data-field="name"]').select(); status('Factor added. Edit its name and sign.'); }
