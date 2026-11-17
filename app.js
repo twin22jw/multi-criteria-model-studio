@@ -46,8 +46,7 @@ const aspectMask = aspect.map(value => Number(!['N', 'NE', 'NW'].includes(value)
 const defaultWater = [19, 20, 25, 26, 31];
 let landMask = Array(N * N).fill(1);
 defaultWater.forEach(i => { landMask[i] = 0; });
-let studentFinal = Array(N * N).fill(null);
-let elevationFlipped = false;
+const student = { elevation: Array(N * N).fill(null), final: Array(N * N).fill(null) };
 let selectedCell = 20;
 const weights = { elevation: 40, slope: 35, aspect: 25 };
 
@@ -83,11 +82,8 @@ function staticCells(values, kind) {
   }).join('');
 }
 function renderBinary() {
-  $('#elevationMap').innerHTML = staticCells(elevationFlipped ? elevationMask : dem, elevationFlipped ? 'binary' : 'elevation');
-  $('#elevationMapTitle').textContent = elevationFlipped ? 'Binary elevation (0/1)' : 'Original elevation (ft)';
-  $('#elevationMapNote').textContent = elevationFlipped ? 'Below 1,900 ft = 1' : 'Continuous source values';
-  $('#flipElevation').textContent = elevationFlipped ? '← Show original elevation' : 'Show binary elevation map →';
-  $('#flipElevation').setAttribute('aria-pressed', String(elevationFlipped));
+  $('#elevationOriginal').innerHTML = staticCells(dem, 'elevation');
+  $('#elevationCorrect').innerHTML = staticCells(elevationMask, 'binary');
   $('#slopeOriginal').innerHTML = staticCells(slope, 'slope');
   $('#slopeBinary').innerHTML = staticCells(slopeMask, 'binary');
   $('#aspectOriginal').innerHTML = staticCells(aspect, 'aspect');
@@ -97,9 +93,9 @@ function renderBinary() {
   $('#finalAspect').innerHTML = staticCells(aspectMask, 'binary');
   $('#finalWater').innerHTML = staticCells(landMask, 'land');
   $('#finalCorrect').innerHTML = staticCells(finalMask(), 'binary');
-  renderStudent();
+  renderStudent('elevation');
+  renderStudent('final');
 }
-$('#flipElevation').addEventListener('click', () => { elevationFlipped = !elevationFlipped; renderBinary(); });
 
 function setSwipe(id, position) {
   const p = clamp(position, 0, 100);
@@ -137,49 +133,56 @@ for (const id of ['slope', 'aspect']) {
   });
 }
 
-function renderStudent() {
-  const answer = finalMask(), checked = !$('#finalAnswer').hidden;
-  $('#finalStudent').innerHTML = studentFinal.map((value, i) => {
+function renderStudent(type) {
+  const answer = type === 'elevation' ? elevationMask : finalMask();
+  const checked = !$('#' + type + 'Answer').hidden;
+  $('#' + type + 'Student').innerHTML = student[type].map((value, i) => {
     const className = 'raster-cell ' + (value === null ? 'unset' : value ? 'binary-yes' : 'binary-no') + (checked && value !== null ? value === answer[i] ? ' correct' : ' wrong' : '');
-    return `<button type="button" class="${className}" data-final-cell="${i}" aria-label="${cellPosition(i)}: ${value === null ? 'unclassified' : value}; click for 0, double click for 1">${value === null ? '?' : value}</button>`;
+    return `<button type="button" class="${className}" data-exercise="${type}" data-student-cell="${i}" aria-label="${cellPosition(i)}: ${value === null ? 'unclassified' : value}; click for 0, double click for 1">${value === null ? '?' : value}</button>`;
   }).join('');
-  $('#finalProgress').textContent = `${studentFinal.filter(value => value !== null).length} / 36 classified`;
+  $('#' + type + 'Progress').textContent = `${student[type].filter(value => value !== null).length} / 36 classified`;
 }
 let clickTimer = null;
-$('#finalStudent').addEventListener('click', event => {
-  const button = event.target.closest('[data-final-cell]');
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-student-cell]');
   if (!button) return;
   clearTimeout(clickTimer);
-  const i = Number(button.dataset.finalCell);
-  clickTimer = setTimeout(() => { studentFinal[i] = 0; renderStudent(); }, 260);
+  const type = button.dataset.exercise, i = Number(button.dataset.studentCell);
+  clickTimer = setTimeout(() => { student[type][i] = 0; renderStudent(type); }, 260);
 });
-$('#finalStudent').addEventListener('dblclick', event => {
-  const button = event.target.closest('[data-final-cell]');
+document.addEventListener('dblclick', event => {
+  const button = event.target.closest('[data-student-cell]');
   if (!button) return;
   clearTimeout(clickTimer);
-  studentFinal[Number(button.dataset.finalCell)] = 1;
-  renderStudent();
+  const type = button.dataset.exercise;
+  student[type][Number(button.dataset.studentCell)] = 1;
+  renderStudent(type);
 });
-$('#finalStudent').addEventListener('keydown', event => {
-  const button = event.target.closest('[data-final-cell]');
+document.addEventListener('keydown', event => {
+  const button = event.target.closest?.('[data-student-cell]');
   if (!button || !['0', '1'].includes(event.key)) return;
-  studentFinal[Number(button.dataset.finalCell)] = Number(event.key);
-  renderStudent();
-  $('#finalStudent [data-final-cell="' + button.dataset.finalCell + '"]').focus();
+  const type = button.dataset.exercise, i = button.dataset.studentCell;
+  student[type][Number(i)] = Number(event.key);
+  renderStudent(type);
+  $('#' + type + 'Student [data-student-cell="' + i + '"]').focus();
 });
-$('#checkFinal').addEventListener('click', () => {
-  const answer = finalMask(), filled = studentFinal.filter(value => value !== null).length;
-  const correct = studentFinal.filter((value, i) => value !== null && value === answer[i]).length;
-  $('#finalAnswer').hidden = false;
-  $('#finalFeedback').innerHTML = `<b>${correct} correct of ${filled} classified</b> · ${36 - filled} unclassified. Green outlines mark correct choices; orange outlines mark cells to revisit.`;
-  renderStudent();
-});
-$('#resetFinal').addEventListener('click', () => {
-  studentFinal.fill(null);
-  $('#finalAnswer').hidden = true;
-  $('#finalFeedback').textContent = 'Only cells where every factor passes and the cell is land can be suitable.';
-  renderStudent();
-});
+for (const type of ['elevation', 'final']) {
+  const title = type[0].toUpperCase() + type.slice(1);
+  $('#check' + title).addEventListener('click', () => {
+    const answer = type === 'elevation' ? elevationMask : finalMask();
+    const filled = student[type].filter(value => value !== null).length;
+    const correct = student[type].filter((value, i) => value !== null && value === answer[i]).length;
+    $('#' + type + 'Answer').hidden = false;
+    $('#' + type + 'Feedback').innerHTML = `<b>${correct} correct of ${filled} classified</b> · ${36 - filled} unclassified. Green outlines mark correct choices; orange outlines mark cells to revisit.`;
+    renderStudent(type);
+  });
+  $('#reset' + title).addEventListener('click', () => {
+    student[type].fill(null);
+    $('#' + type + 'Answer').hidden = true;
+    $('#' + type + 'Feedback').textContent = type === 'elevation' ? 'Classify each cell, then compare your map with the answer.' : 'Only cells where every factor passes and the cell is land can be suitable.';
+    renderStudent(type);
+  });
+}
 
 function renderWeights() {
   const total = totalWeight();
