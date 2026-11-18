@@ -62,13 +62,14 @@
     return url.href;
   }
   function renderWelcome() {
+    const exampleRoom = activeTopic === 'heat' ? 'F26GEOG328-2' : 'F26GEOG328-1';
     $('#collabContent').innerHTML = `<div class="collab-entry">
       <section class="collab-card"><p class="eyebrow">STUDENT MODE</p><h2>Create your group</h2><p>Use the Classroom ID from your instructor, choose your own group name, and open a shared workspace. Your group can see other groups only when the instructor opens comparison.</p>
-      <form id="createGroup"><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" placeholder="e.g. F26GEOG328-1" autocomplete="off"></label><label>Your group name<input name="name" required minlength="2" maxlength="40" placeholder="e.g. Hugag" autocomplete="off"></label><button class="primary">Create group workspace</button></form>
-      <form id="studentJoin"><h3>Join a group already created</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Group code from a teammate<input name="code" required autocomplete="off"></label><button class="secondary">Join existing group</button></form></section>
+      <form id="createGroup"><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" placeholder="e.g. ${exampleRoom}" autocomplete="off"></label><label>Your group name<input name="name" required minlength="2" maxlength="40" placeholder="e.g. Hugag" autocomplete="off"></label><button class="primary">Create group workspace</button></form>
+      <form id="studentJoin"><h3>Join a group already created</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" placeholder="e.g. ${exampleRoom}" autocomplete="off"></label><label>Group code from a teammate<input name="code" required autocomplete="off"></label><button class="secondary">Join existing group</button></form></section>
       <section class="collab-card"><p class="eyebrow">INSTRUCTOR MODE</p><h2>Set up your classroom</h2><p>Define the Classroom ID and Instructor secret here. Students create their own groups until the maximum you set is reached.</p>
-      <form id="createClass"><label>Classroom ID<input name="room" required minlength="4" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{3,31}" placeholder="e.g. F26GEOG328-1" autocomplete="off"></label><label>Instructor secret<input name="secret" required minlength="8" maxlength="100" type="password" placeholder="At least 8 characters" autocomplete="new-password"></label><label>Maximum number of groups (2–20)<input name="groups" type="number" min="2" max="20" value="20" required></label><button class="primary">Create classroom</button></form>
-      <form id="teacherJoin"><h3>Open an existing classroom</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" autocomplete="off"></label><label>Instructor secret<input name="secret" required type="password" autocomplete="off"></label><button class="secondary">Open instructor dashboard</button></form></section></div>`;
+      <form id="createClass"><label>Classroom ID<input name="room" required minlength="4" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{3,31}" placeholder="e.g. ${exampleRoom}" autocomplete="off"></label><label>Instructor secret<input name="secret" required minlength="8" maxlength="100" type="password" placeholder="At least 8 characters" autocomplete="new-password"></label><label>Maximum number of groups (2–20)<input name="groups" type="number" min="2" max="20" value="20" required></label><button class="primary">Create classroom</button></form>
+      <form id="teacherJoin"><h3>Open an existing classroom</h3><label>Classroom ID<input name="room" required value="${esc(roomFromUrl)}" placeholder="e.g. ${exampleRoom}" autocomplete="off"></label><label>Instructor secret<input name="secret" required type="password" autocomplete="off"></label><button class="secondary">Open instructor dashboard</button></form></section></div>`;
     $('#createGroup').addEventListener('submit', async event => {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
@@ -230,6 +231,7 @@
       activeTopic = topicButton.dataset.topic;
       renderTopicHeader();
       if (auth && current) renderDashboard();
+      else renderWelcome();
       status('Viewing ' + topics[activeTopic].title + '.');
       return;
     }
