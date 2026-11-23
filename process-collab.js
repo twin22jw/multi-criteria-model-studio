@@ -24,14 +24,14 @@
     const group=snapshot.groups[0];if(!group)return;
     lastState=snapshot;$('processGroupTitle').textContent=group.label;$('processGroupCode').textContent=auth.code;
     const editing=$('processGroupWorkspace').contains(document.activeElement)&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName);
-    if(!editing){$('fireAnswerProcess').value=group.process.q1||'';$('fireAnswerFactors').value=group.process.q2||'';$('processVariableRows').innerHTML=(group.process.variables||[]).map(variableRow).join('');}
+    if(!editing)$('processVariableRows').innerHTML=(group.process.variables||[]).map(variableRow).join('');
     show('student');
   }
   function renderInstructor(snapshot){
     $('processInstructorCount').textContent=String(snapshot.groups.length);
     $('processInstructorGroups').innerHTML=snapshot.groups.length?snapshot.groups.map(group=>{
       const doc=group.process||{},variables=doc.variables||[];
-      return `<article class="process-instructor-card"><div class="process-instructor-head"><h4>${esc(group.label)}</h4><span>${variables.length} variables</span></div><div><b>Q1 · Process over time</b><p>${esc(doc.q1||'No response yet.')}</p></div><div><b>Q2 · Factors and interactions</b><p>${esc(doc.q2||'No response yet.')}</p></div><div><b>Q3 · Variables and real data</b>${variables.length?`<table><thead><tr><th>Variable</th><th>Possible real data</th></tr></thead><tbody>${variables.map(item=>`<tr><td>${esc(item.name)}</td><td>${esc(item.realData||'Not specified yet.')}</td></tr>`).join('')}</tbody></table>`:'<p>No variables yet.</p>'}</div><small>Last saved ${group.updatedAt?new Date(group.updatedAt).toLocaleTimeString():'—'}</small></article>`;
+      return `<article class="process-instructor-card"><div class="process-instructor-head"><h4>${esc(group.label)}</h4><span>${variables.length} variables</span></div><div><b>Additional variables and real-world data sources</b>${variables.length?`<table><thead><tr><th>Variable</th><th>Possible real-world data source</th></tr></thead><tbody>${variables.map(item=>`<tr><td>${esc(item.name)}</td><td>${esc(item.realData||'Not specified yet.')}</td></tr>`).join('')}</tbody></table>`:'<p>No variables yet.</p>'}</div><small>Last saved ${group.updatedAt?new Date(group.updatedAt).toLocaleTimeString():'—'}</small></article>`;
     }).join(''):'<p class="process-empty">Waiting for student groups to create their workspaces…</p>';
     show('instructor');
   }
@@ -51,12 +51,6 @@
   });
   $('processLeaveGroup').addEventListener('click',clearSession);
   $('processLeaveInstructor').addEventListener('click',clearSession);
-  for(const [id,field] of [['fireAnswerProcess','q1'],['fireAnswerFactors','q2']])$(id).addEventListener('input',()=>{
-    saveStatus('Saving…');clearTimeout(saveTimers[field]);saveTimers[field]=setTimeout(async()=>{
-      try{await request('/process/answers/'+field,'PUT',{text:$(id).value});saveStatus('Saved · your group and instructor can see this response.');}
-      catch(error){saveStatus('Could not save: '+error.message);}
-    },550);
-  });
   $('processAddVariable').addEventListener('click',()=>{const rows=$('processVariableRows');if(rows.children.length>=12){saveStatus('Maximum 12 variables per group.');return;}rows.insertAdjacentHTML('beforeend',variableRow());rows.lastElementChild.querySelector('[data-field="name"]').focus();});
   $('processVariableRows').addEventListener('input',event=>{
     const row=event.target.closest('.process-variable-row');if(!row)return;
