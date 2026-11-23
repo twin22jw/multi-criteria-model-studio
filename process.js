@@ -122,9 +122,15 @@
       else pen.fillStyle=`rgb(${Math.round(121-z*26)},${green},${Math.round(91-z*16)})`;
       if (grid.lake[i]) pen.fillStyle='#87bacc';
       pen.fillRect(x,y,w+1,h+1);
-      if (layer==='fire') {
-        if (state[i]===2) {pen.fillStyle='rgba(80,82,85,.88)';pen.fillRect(x,y,w+1,h+1);}
-        if (state[i]===1) {pen.fillStyle='#e96a26';pen.fillRect(x,y,w+1,h+1);pen.fillStyle='rgba(255,217,95,.78)';pen.fillRect(x+w*.14,y+h*.14,w*.72,h*.72);}
+      if (state[i]===2) {
+        pen.fillStyle=layer==='fire'?'rgba(80,82,85,.88)':'rgba(54,53,56,.58)';
+        pen.fillRect(x,y,w+1,h+1);
+      }
+      if (state[i]===1) {
+        pen.fillStyle=layer==='fire'?'#e96a26':'rgba(233,82,30,.88)';
+        pen.fillRect(x,y,w+1,h+1);
+        pen.fillStyle='rgba(255,217,95,.85)';
+        pen.fillRect(x+w*.18,y+h*.18,w*.64,h*.64);
       }
       pen.strokeStyle='rgba(255,255,255,.19)';pen.lineWidth=1;pen.strokeRect(x+.5,y+.5,w,h);
     }
@@ -153,7 +159,8 @@
       canopy:'Low → high canopy · illustrative proxy, not measured height in metres',
       wind:'Arrows show the scenario direction wind blows toward; the field is uniform.'
     };
-    el('processLayerLegend').innerHTML=legends[layer];
+    const spread='<span><i class="pm-active"></i>Burning</span><span><i class="pm-burned"></i>Burned</span>';
+    el('processLayerLegend').innerHTML=layer==='fire'?legends.fire:`<span>${legends[layer]}</span>${spread}`;
   }
 
   function render() {
