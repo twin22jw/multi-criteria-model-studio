@@ -4,7 +4,7 @@
   const el = id => document.getElementById(id);
   const canvas = el('processMap');
   let grid, terrain, ignition, states = [], events = [], timer = null, cellWidth, cellHeight;
-  let mapMode = 'inspect', selectedCell = null, comparison = { A: null, B: null };
+  let mapMode = 'inspect', selectedCell = null;
   const steps = 12;
   const windVectors = { N: [0,-1], NE: [1,-1], E: [1,0], SE: [1,1], S: [0,1], SW: [-1,1], W: [-1,0], NW: [-1,-1] };
   const windNames = ['Calm', 'Light', 'Moderate', 'Strong'];
@@ -37,9 +37,9 @@
       direction: el('fireWindDirection').value,
       wind: Number(el('fireWindSpeed').value),
       dryness: Number(el('fireDryness').value),
-      slope: el('fireSlope').checked,
-      vegetation: el('fireVegetation').checked,
-      canopy: el('fireCanopy').checked,
+      slope: true,
+      vegetation: true,
+      canopy: true,
     };
   }
 
@@ -223,9 +223,9 @@
   for (const button of root.querySelectorAll('[data-map-mode]')) button.addEventListener('click',()=>{
     mapMode=button.dataset.mapMode;
     for(const item of root.querySelectorAll('[data-map-mode]')) {const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-pressed',String(active));}
-    el('processMapHelp').textContent=mapMode==='inspect'?'Click a cell to inspect its input values and ignition history. Switch to Move ignition to relocate the start. This study window is not an official watershed boundary.':'Click a land cell to relocate the hypothetical ignition. Both saved comparisons remain at their original ignition cell.';
+    el('processMapHelp').textContent=mapMode==='inspect'?'Click a cell to inspect its input values and ignition history. Switch to Move ignition to relocate the start. This study window is not an official watershed boundary.':'Click a land cell to relocate the hypothetical ignition. ';
   });
-  for (const id of ['fireWindDirection','fireWindSpeed','fireDryness','fireSlope','fireVegetation','fireCanopy']) el(id).addEventListener('input',update);
+  for (const id of ['fireWindDirection','fireWindSpeed','fireDryness']) el(id).addEventListener('input',update);
   canvas.addEventListener('click', event => {
     if (!grid) return;
     const rect=canvas.getBoundingClientRect();
@@ -238,60 +238,12 @@
   });
   el('processShowInputs').addEventListener('click',()=>{const panel=el('processInputs');panel.hidden=!panel.hidden;el('processShowInputs').textContent=panel.hidden?'Reveal model inputs':'Hide model inputs';});
 
-  function experimentPair() {
-    const base={direction:'E',wind:1,dryness:2,slope:true,vegetation:true,canopy:true};
-    const key=el('fireExperiment').value;
-    if (key==='wind') return {a:{...base,wind:0},b:{...base,wind:3},aLabel:'Calm · dry fuel',bLabel:'Strong eastward wind · dry fuel',question:'Does wind change the shape even when the total reached cells do not increase?'};
-    if (key==='dryness') return {a:{...base,dryness:0},b:{...base,dryness:3},aLabel:'Moist fuel',bLabel:'Very dry fuel',question:'Where does drying allow a burning front to persist?'};
-    if (key==='slope') return {a:{...base,slope:false},b:{...base,slope:true},aLabel:'Slope effect off',bLabel:'Slope effect on',question:'Compare uphill and downhill transitions at the same location.'};
-    if (key==='fuel') return {a:{...base,vegetation:false},b:{...base,vegetation:true},aLabel:'Vegetation effect off',bLabel:'Vegetation effect on',question:'Which cells respond to the change in fuel continuity?'};
-    const r=Math.floor(ignition/grid.cols),c=ignition%grid.cols;
-    const choices=Object.entries(windVectors).map(([direction,[dx,dy]])=>({direction,rr:r+dy,cc:c+dx})).filter(x=>x.rr>=0&&x.rr<grid.rows&&x.cc>=0&&x.cc<grid.cols&&!grid.lake[x.rr*grid.cols+x.cc]).map(x=>({...x,difference:terrain[x.rr*grid.cols+x.cc].height-terrain[ignition].height})).sort((a,b)=>b.difference-a.difference);
-    const uphill=choices[0],downhill=choices[choices.length-1];
-    return {a:{...base,wind:3,direction:uphill.direction},b:{...base,wind:3,direction:downhill.direction},aLabel:`Wind ${uphill.direction} · toward higher ground (${uphill.difference>0?'+':''}${Math.round(uphill.difference)} m)`,bLabel:`Wind ${downhill.direction} · toward lower ground (${downhill.difference>0?'+':''}${Math.round(downhill.difference)} m)`,question:'How do wind and slope reinforce or counteract each other?'};
-  }
-
-  const experimentKey='geog328-sooke-experiments-v1';
-  let experimentNotes={};
-  try{experimentNotes=JSON.parse(localStorage.getItem(experimentKey)||'{}');}catch{}
-  function saveExperimentNotes(){const key=el('fireExperiment').value;experimentNotes[key]={prediction:el('firePrediction').value,explanation:el('fireExplanation').value};try{localStorage.setItem(experimentKey,JSON.stringify(experimentNotes));el('fireExperimentHint').textContent='Prediction and explanation saved on this device.';}catch{el('fireExperimentHint').textContent='Browser storage unavailable. Copy your responses before leaving.';}}
-  function showExperiment(){if(!grid)return;const pair=experimentPair(),notes=experimentNotes[el('fireExperiment').value]||{};el('fireExperimentScenarios').innerHTML=`<div><b>Scenario A</b><span>${pair.aLabel}</span></div><div><b>Scenario B</b><span>${pair.bLabel}</span></div><p>${pair.question}</p>`;el('firePrediction').value=notes.prediction||'';el('fireExplanation').value=notes.explanation||'';}
-  el('fireExperiment').addEventListener('change',showExperiment);
-  for(const id of ['firePrediction','fireExplanation'])el(id).addEventListener('input',saveExperimentNotes);
-
-  function scenarioLabel(s){return `${s.wind===0?'Calm wind':windNames[s.wind]+' wind toward '+s.direction} · ${dryNames[s.dryness]} fuel${s.slope?'':' · slope off'}${s.vegetation?'':' · vegetation off'}`;}
-  function saveSnapshot(key, result, label){comparison[key]={...result,label};renderComparison();}
-  function renderComparison(){if(!grid)return;for(const key of ['A','B']){const snap=comparison[key],target=el('fireCompare'+key);if(!snap){target.getContext('2d').clearRect(0,0,target.width,target.height);continue;}drawMap(target,snap.states[steps],'fire',snap.origin,snap.settings);const count=[...snap.states[steps]].filter(Boolean).length;el('fireScenario'+key+'Label').textContent=snap.label;el('fireScenario'+key+'Count').textContent=count+' cells';target.setAttribute('aria-label',`Scenario ${key}: ${snap.label}; ${count} land cells reached at step 12.`);}}
-  for(const key of ['A','B'])el('fireSave'+key).addEventListener('click',()=>{
-    if(!grid)return;
-    const other=comparison[key==='A'?'B':'A'];
-    if(other && other.origin!==ignition){el('fireExperimentHint').textContent='For a fair comparison, keep the same ignition cell. Move it back or run a paired experiment.';return;}
-    saveSnapshot(key,runSimulation(settings(),ignition),scenarioLabel(settings()));
-    el('fireExperimentHint').textContent=`Current settings saved as Scenario ${key} at step 12. Change one factor, then save the other scenario.`;
-  });
-  function applySettings(s){el('fireWindDirection').value=s.direction;el('fireWindSpeed').value=s.wind;el('fireDryness').value=s.dryness;el('fireSlope').checked=s.slope;el('fireVegetation').checked=s.vegetation;el('fireCanopy').checked=s.canopy;}
-  el('fireRunExperiment').addEventListener('click',()=>{
-    if(!grid)return;
-    if(!el('firePrediction').value.trim()){el('fireExperimentHint').textContent='Write a prediction before running the paired scenarios.';el('firePrediction').focus();return;}
-    const pair=experimentPair(),origin=ignition;
-    comparison.A={...runSimulation(pair.a,origin),label:pair.aLabel};
-    comparison.B={...runSimulation(pair.b,origin),label:pair.bLabel};
-    renderComparison();stop();applySettings(pair.b);el('fireStep').value=steps;update();
-    el('fireExperimentHint').textContent='Both scenarios ran with the same ignition cell. Compare their maps, then explain your result.';
-  });
-
-  const answerIds=['fireAnswerProcess','fireAnswerFactors','fireAnswerData'];
-  const savedKey='geog328-sooke-fire-notes-v1';
-  try {const saved=JSON.parse(localStorage.getItem(savedKey)||'{}');for(const id of answerIds)el(id).value=saved[id]||'';}catch{}
-  for(const id of answerIds) el(id).addEventListener('input',()=>{try{localStorage.setItem(savedKey,JSON.stringify(Object.fromEntries(answerIds.map(key=>[key,el(key).value]))));el('fireSaved').textContent='Saved on this device.';}catch{el('fireSaved').textContent='Browser storage unavailable. Copy your responses.';}});
-  el('fireCopy').addEventListener('click',async()=>{const experiments=Object.entries(experimentNotes).map(([key,note])=>`${key}: prediction: ${note.prediction||''}\nExplanation: ${note.explanation||''}`);const text=['Sooke Lake wildfire process activity',...experiments,'1. Process: '+el(answerIds[0]).value,'2. Factors: '+el(answerIds[1]).value,'3. Data needed: '+el(answerIds[2]).value].join('\n\n');try{await navigator.clipboard.writeText(text);el('fireSaved').textContent='Responses copied.';}catch{el('fireSaved').textContent='Copy is unavailable in this browser.';}});
-
   fetch('data/sooke-fire-grid.json').then(response=>{if(!response.ok)throw Error('Data unavailable');return response.json();}).then(data=>{
     grid=data;deriveTerrain();
     // West of the reservoir: a hypothetical lightning strike on dry land.
     ignition=9*grid.cols+7;
     if(grid.lake[ignition]) ignition=grid.lake.findIndex((water,i)=>!water && i>grid.cols*7);
-    update();showExperiment();
+    update();
   }).catch(()=>{el('processReadout').textContent='The geographic data could not be loaded. Please reload the page.';});
 })();
 
