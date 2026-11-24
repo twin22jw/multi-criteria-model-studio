@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Multi-criteria Model Studio</title>
-  <meta name="description" content="Explore binary, index, spatial regression, and wildfire process models in GEOG 328.">
-  <link rel="stylesheet" href="styles.css?v=process-3">
+  <meta name="description" content="Explore binary, index, spatial regression, wildfire spread, and urban growth activities in GEOG 328.">
+  <link rel="stylesheet" href="styles.css?v=urban-1">
 </head>
 <body>
 <header class="top"><div class="brand"><span class="logo">◎</span><span>Multi-criteria <b>Model Studio</b></span></div><nav aria-label="Main tabs"><button class="tab active" data-tab="binary" aria-current="page">1 · Binary model</button><button class="tab" data-tab="index">2 · Index model</button><button class="tab" data-tab="regression">3 · Spatial regression</button><button class="tab" data-tab="process">4 · Process model</button></nav></header>
@@ -56,6 +56,8 @@
 </section>
 <section class="page" id="regression"></section>
 <section class="page process-page" id="process">
+  <nav class="process-subtabs" role="tablist" aria-label="Process model activities"><button type="button" role="tab" id="processFireTab" aria-controls="processFirePanel" aria-selected="true" class="active">Wildfire spread · Sooke Lake</button><button type="button" role="tab" id="processUrbanTab" aria-controls="processUrbanPanel" aria-selected="false">Urban growth · Greater Victoria</button></nav>
+  <div id="processFirePanel" role="tabpanel" aria-labelledby="processFireTab">
   <div class="hero process-hero"><div><p class="eyebrow">GEOG 328 · SOOKE LAKE WATERSHED</p><h1>How Might a Wildfire Spread?</h1><p class="lede">Explore a hypothetical ignition near Sooke Lake Reservoir. Change the conditions, watch the fire move through time, and explain the processes and interactions you observe.</p></div><div class="formula"><b>Process model</b><span>Ignition → combustion → spread</span><span>Wind × terrain × fuel × moisture</span><span>Each step changes the next</span><span>Teaching scenario · not a forecast</span></div></div>
   <div class="process-intro"><div><b>First, discuss:</b> What data would you need to model a wildfire here? Which inputs describe ignition, which shape spread, and which limit it?</div><button type="button" class="secondary" id="processShowInputs">Reveal model inputs</button></div>
   <div class="process-inputs" id="processInputs" hidden><div><b>Ignition</b><span>Lightning or a human-caused spark starts the event. The exact location and time here are hypothetical.</span></div><div><b>Spread interactions</b><span>Wind direction, upslope movement, vegetation fuel, canopy continuity, and dryness alter spread at every step.</span></div><div><b>Physical setting</b><span>Sooke Lake water blocks spread. Terrain and the reservoir shoreline use public geographic data.</span></div></div>
@@ -77,6 +79,23 @@
     <div id="processInstructorView" hidden><div class="process-group-bar"><div><p class="eyebrow">INSTRUCTOR VIEW</p><h3>Live group responses</h3><p>Refreshing while students work · <span id="processInstructorCount">0</span> groups</p></div><button class="secondary" type="button" id="processLeaveInstructor">Switch group</button></div><div id="processInstructorGroups" class="process-instructor-grid"></div></div><p id="processGroupStatus" class="process-save-status" aria-live="polite"></p>
   </div>
   <div class="process-sources"><b>Sources and data limits</b><p><a href="https://www.crd.ca/programs-services/water/greater-victorias-water-supply/sooke-lake-reservoir" target="_blank" rel="noopener">CRD Sooke Lake Reservoir</a> · <a href="https://mapservices.crd.bc.ca/arcgis/rest/services/Root/WaterFeaturesDrainage/MapServer/7" target="_blank" rel="noopener">CRD water bodies GIS</a> · <a href="https://geogratis.gc.ca/site/eng/elevation" target="_blank" rel="noopener">NRCan CDEM elevation</a>. The study window, spread rule, and weather/fuel inputs are teaching choices. This is a hypothetical fire, not a past incident or operational prediction.</p></div>
+  </div>
+  <div id="processUrbanPanel" role="tabpanel" aria-labelledby="processUrbanTab" hidden>
+    <div class="hero urban-hero"><div><p class="eyebrow">GEOG 328 · GREATER VICTORIA</p><h1>Where Might Urban Areas Grow?</h1><p class="lede">Imagine Greater Victoria 30 years from now. Discuss what drives growth, identify environmental and socioeconomic factors, then place your group's possible new urban areas on the map.</p></div><div class="formula"><b>Process model</b><span>Growth drivers → spatial factors → possible locations</span><span>Group forecast · not an official projection</span></div></div>
+    <div class="urban-intro">What processes might drive urban growth over time? Which environmental or socioeconomic conditions could influence where it occurs? Use evidence to support your group's map predictions.</div>
+    <div class="urban-workspace">
+      <div class="urban-map-card"><div class="section-head"><div><p class="eyebrow">30-YEAR GROUP FORECAST</p><h2>Greater Victoria map</h2><p>Select a municipality on the map to propose a location. Add a reason for each pin. The outlines provide geographic context, not a map of current built-up land.</p></div></div><div class="urban-map-wrap"><svg id="urbanMap" viewBox="0 0 760 600" role="img" aria-label="Greater Victoria municipalities and group forecasts"></svg><span class="urban-north">N ↑</span></div><div class="urban-map-key"><span><i class="urban-key-land"></i> Municipality</span><span><i class="urban-key-pin"></i> Your forecast</span><span id="urbanOtherKey" hidden><i class="urban-key-other"></i> Other groups</span></div><p class="urban-map-message" id="urbanMapMessage">Open a group workspace to add predictions.</p><div id="urbanMapSelection" class="urban-map-selection" aria-live="polite"></div></div>
+      <div class="urban-response-card"><div id="urbanGroupEntry"><p class="eyebrow">GROUP WORKSPACE</p><h2>Discuss and predict</h2><form id="urbanGroupForm"><label>Group name<input name="name" required maxlength="40" placeholder="e.g. Coastal Thinkers" autocomplete="off"></label><label>Group code <small>only if joining an existing group</small><input name="code" placeholder="Code from a teammate" autocomplete="off"></label><button type="submit" class="primary">Open group workspace</button></form><p>Create a group with your own name. Teammates join using the name and code. Enter <code>GEOG328_instructor</code> as the group name to see every group's work and map pins. This marker is not a secure password.</p></div>
+        <div id="urbanStudentWorkspace" hidden><div class="process-group-bar"><div><p class="eyebrow">SHARED GROUP WORKSPACE</p><h2 id="urbanGroupTitle"></h2><p>Group code: <code id="urbanGroupCode"></code> · Share it with your teammates.</p></div><button type="button" class="secondary" id="urbanLeaveGroup">Switch group</button></div>
+          <section class="urban-task"><h3>1 · Growth processes</h3><p>What changes over time could create demand for new urban areas? Add processes your group expects.</p><div id="urbanProcessRows"></div><button type="button" class="secondary" id="urbanAddProcess">Add a process</button></section>
+          <section class="urban-task"><h3>2 · Factors and evidence</h3><p>Which environmental and socioeconomic factors could influence location? Name real data that could help assess each one.</p><div class="urban-factor-head"><b>Factor</b><b>Type</b><b>Possible real data source</b></div><div id="urbanFactorRows"></div><button type="button" class="secondary" id="urbanAddFactor">Add a factor</button></section>
+          <section class="urban-task"><h3>3 · Predict locations</h3><p>Click up to six places within the municipality outlines. For each, explain why new urban development might occur there.</p><div id="urbanPredictionRows"></div></section><p class="process-save-status" id="urbanSaveStatus" aria-live="polite">Group work saves automatically.</p>
+        </div>
+        <div id="urbanInstructorWorkspace" hidden><div class="process-group-bar"><div><p class="eyebrow">INSTRUCTOR VIEW</p><h2>Live group forecasts</h2><p><span id="urbanInstructorCount">0</span> groups · refreshes while students work</p></div><button type="button" class="secondary" id="urbanLeaveInstructor">Switch group</button></div><div id="urbanInstructorGroups"></div></div><p id="urbanStatus" class="process-save-status" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="urban-resources"><b>Find evidence</b><p><a href="https://www.crd.ca/programs-services/regional-planning/regional-growth-strategy" target="_blank" rel="noopener">CRD Regional Growth Strategy</a> · <a href="https://www.crd.ca/government-administration/data-documents/maps-geospatial-data" target="_blank" rel="noopener">CRD maps and data</a> · <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710014801" target="_blank" rel="noopener">Statistics Canada population estimates</a> · <a href="https://catalogue.data.gov.bc.ca/" target="_blank" rel="noopener">BC Data Catalogue</a>. These sources can support or challenge a hypothesis; the coloured pins are student ideas, not measured growth or an official forecast. The map covers the 13 municipalities shown here and omits the Juan de Fuca Electoral Area.</p></div>
+  </div>
 </section>
 </main>
 <footer><span>GEOG 328 · Multi-criteria Model Studio</span><span>Compare → weight → constrain → explain</span></footer>
@@ -84,6 +103,7 @@
 <script src="collaboration.js?v=classroom-5"></script>
 <script src="process.js?v=process-4"></script>
 <script src="process-collab.js?v=process-4"></script>
+<script src="urban.js?v=urban-1"></script>
 </body>
 </html>
 
