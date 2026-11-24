@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Multi-criteria Model Studio</title>
   <meta name="description" content="Explore binary, index, spatial regression, wildfire spread, and urban growth activities in GEOG 328.">
-  <link rel="stylesheet" href="styles.css?v=urban-1">
+  <link rel="stylesheet" href="styles.css?v=urban-3">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 </head>
 <body>
 <header class="top"><div class="brand"><span class="logo">◎</span><span>Multi-criteria <b>Model Studio</b></span></div><nav aria-label="Main tabs"><button class="tab active" data-tab="binary" aria-current="page">1 · Binary model</button><button class="tab" data-tab="index">2 · Index model</button><button class="tab" data-tab="regression">3 · Spatial regression</button><button class="tab" data-tab="process">4 · Process model</button></nav></header>
@@ -84,7 +85,7 @@
     <div class="hero urban-hero"><div><p class="eyebrow">GEOG 328 · GREATER VICTORIA</p><h1>Where Might Urban Areas Grow?</h1><p class="lede">Imagine Greater Victoria 30 years from now. Discuss what drives growth, identify environmental and socioeconomic factors, then place your group's possible new urban areas on the map.</p></div><div class="formula"><b>Process model</b><span>Growth drivers → spatial factors → possible locations</span><span>Group forecast · not an official projection</span></div></div>
     <div class="urban-intro">What processes might drive urban growth over time? Which environmental or socioeconomic conditions could influence where it occurs? Use evidence to support your group's map predictions.</div>
     <div class="urban-workspace">
-      <div class="urban-map-card"><div class="section-head"><div><p class="eyebrow">30-YEAR GROUP FORECAST</p><h2>Greater Victoria map</h2><p>Select a municipality on the map to propose a location. Add a reason for each pin. The outlines provide geographic context, not a map of current built-up land.</p></div></div><div class="urban-map-wrap"><svg id="urbanMap" viewBox="0 0 760 600" role="img" aria-label="Greater Victoria municipalities and group forecasts"></svg><span class="urban-north">N ↑</span></div><div class="urban-map-key"><span><i class="urban-key-land"></i> Municipality</span><span><i class="urban-key-pin"></i> Your forecast</span><span id="urbanOtherKey" hidden><i class="urban-key-other"></i> Other groups</span></div><p class="urban-map-message" id="urbanMapMessage">Open a group workspace to add predictions.</p><div id="urbanMapSelection" class="urban-map-selection" aria-live="polite"></div></div>
+      <div class="urban-map-card"><div class="section-head"><div><p class="eyebrow">30-YEAR GROUP FORECAST</p><h2>Greater Victoria road map</h2><p>Zoom and pan to explore roads and neighbourhoods. Click within a municipality to propose a location, then add a reason for your pin. The map is geographic context, not a map of current built-up land.</p></div></div><div class="urban-map-wrap"><div id="urbanRoadMap" class="urban-road-map" aria-label="Zoomable Greater Victoria road map with group forecasts" hidden></div><svg id="urbanMap" viewBox="0 0 760 600" role="img" aria-label="Greater Victoria municipalities and group forecasts"></svg><span class="urban-north">N ↑</span></div><div class="urban-map-key"><span><i class="urban-key-land"></i> Municipality</span><span><i class="urban-key-pin"></i> Your forecast</span><span id="urbanOtherKey" hidden><i class="urban-key-other"></i> Other groups</span></div><p class="urban-map-message" id="urbanMapMessage">Open a group workspace to add predictions.</p><div id="urbanMapSelection" class="urban-map-selection" aria-live="polite"></div></div>
       <div class="urban-response-card"><div id="urbanGroupEntry"><p class="eyebrow">GROUP WORKSPACE</p><h2>Discuss and predict</h2><form id="urbanGroupForm"><label>Group name<input name="name" required maxlength="40" placeholder="e.g. Coastal Thinkers" autocomplete="off"></label><label>Group code <small>only if joining an existing group</small><input name="code" placeholder="Code from a teammate" autocomplete="off"></label><button type="submit" class="primary">Open group workspace</button></form><p>Create a group with your own name. Teammates join using the name and code. Enter <code>GEOG328_instructor</code> as the group name to see every group's work and map pins. This marker is not a secure password.</p></div>
         <div id="urbanStudentWorkspace" hidden><div class="process-group-bar"><div><p class="eyebrow">SHARED GROUP WORKSPACE</p><h2 id="urbanGroupTitle"></h2><p>Group code: <code id="urbanGroupCode"></code> · Share it with your teammates.</p></div><button type="button" class="secondary" id="urbanLeaveGroup">Switch group</button></div>
           <section class="urban-task"><h3>1 · Growth processes</h3><p>What changes over time could create demand for new urban areas? Add processes your group expects.</p><div id="urbanProcessRows"></div><button type="button" class="secondary" id="urbanAddProcess">Add a process</button></section>
@@ -103,7 +104,9 @@
 <script src="collaboration.js?v=classroom-5"></script>
 <script src="process.js?v=process-4"></script>
 <script src="process-collab.js?v=process-4"></script>
-<script src="urban.js?v=urban-1"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+<script src="urban.js?v=urban-3"></script>
 </body>
 </html>
+
 
