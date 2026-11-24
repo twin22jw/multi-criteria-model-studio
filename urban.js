@@ -7,12 +7,13 @@
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const svgNS='http://www.w3.org/2000/svg', map=$('urbanMap');
   let geo=null,auth=null,snapshot=null,selected=null,timer=null,saveTimers={};
+  let roadMap=null,roadPins=null;
   function activate(name) {
     const urban=name==='urban';
     $('processFirePanel').hidden=urban;$('processUrbanPanel').hidden=!urban;
     fireTab.classList.toggle('active',!urban);urbanTab.classList.toggle('active',urban);
     fireTab.setAttribute('aria-selected',String(!urban));urbanTab.setAttribute('aria-selected',String(urban));
-    if(urban)renderMap();
+    if(urban){ensureRoadMap();renderMap();if(roadMap)requestAnimationFrame(()=>roadMap.invalidateSize());}
   }
   fireTab.addEventListener('click',()=>activate('fire'));
   urbanTab.addEventListener('click',()=>activate('urban'));
@@ -64,6 +65,35 @@
   function svgElement(tag,attributes={}){const node=document.createElementNS(svgNS,tag);Object.entries(attributes).forEach(([name,value])=>node.setAttribute(name,String(value)));return node;}
   function projected(lon,lat){const [west,south,east,north]=geo.bounds,midLon=(west+east)/2,midLat=(south+north)/2,scale=Math.min(650/((east-west)*.66),530/(north-south));return [380+(lon-midLon)*.66*scale,300-(lat-midLat)*scale];}
   function unproject(x,y){const [west,south,east,north]=geo.bounds,midLon=(west+east)/2,midLat=(south+north)/2,scale=Math.min(650/((east-west)*.66),530/(north-south));return [midLon+(x-380)/(.66*scale),midLat-(y-300)/scale];}
+  function ensureRoadMap(){
+    if(roadMap||!geo||!window.L||$('processUrbanPanel').hidden)return;
+    const [west,south,east,north]=geo.bounds;
+    $('urbanRoadMap').hidden=false;map.setAttribute('hidden','');
+    roadMap=L.map('urbanRoadMap',{scrollWheelZoom:true,minZoom:9,maxZoom:18,zoomSnap:.25});
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+    }).addTo(roadMap);
+    for(const area of geo.areas){
+      const rings=area.rings.map(ring=>ring.map(([lon,lat])=>[lat,lon]));
+      const boundary=L.polygon(rings,{color:'#23725d',weight:1.6,opacity:.75,fillColor:'#9bc8a8',fillOpacity:.03,bubblingMouseEvents:false}).addTo(roadMap);
+      boundary.bindTooltip(area.name,{sticky:true});
+      boundary.on('click',event=>savePin(event.latlng.lng,event.latlng.lat,area));
+    }
+    roadPins=L.layerGroup().addTo(roadMap);
+    roadMap.fitBounds([[south,west],[north,east]],{padding:[12,12]});
+    roadMap.on('click',()=>status(auth?.role==='student'?'Choose a location within a municipality outline.':'Open a student group to place a forecast pin.'));
+  }
+  function renderRoadPins(){
+    if(!roadPins)return;roadPins.clearLayers();
+    if(!snapshot)return;
+    for(const [i,group] of snapshot.groups.entries())for(const [j,pin] of group.urban.predictions.entries()){
+      const colour=auth?.role==='student'?'#d9743b':`hsl(${(i*137+18)%360} 61% 42%)`;
+      const chosen=selected?.groupId===group.id&&selected?.id===pin.id;
+      const icon=L.divIcon({className:'urban-leaflet-pin'+(chosen?' selected':''),html:`<span style="background:${colour}">${j+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]});
+      const marker=L.marker([pin.lat,pin.lon],{icon,title:`${group.label} · pin ${j+1} · ${pin.municipality||'map location'}`,keyboard:true}).addTo(roadPins);
+      marker.on('click',()=>{selected={groupId:group.id,id:pin.id};renderMap();if(auth?.role==='student')$('urbanPredictionRows').querySelector(`[data-id="${pin.id}"]`)?.scrollIntoView({block:'nearest',behavior:'smooth'});});
+    }
+  }
   function selectedText(){
     if(!snapshot||!selected)return '';
     const group=snapshot.groups.find(g=>g.id===selected.groupId),pin=group?.urban.predictions.find(p=>p.id===selected.id);
@@ -71,7 +101,9 @@
     return `${esc(group.label)} · ${esc(pin.municipality||'Map location')}${pin.why?` — ${esc(pin.why)}`:' · Add a reason in the forecast list.'}`;
   }
   function renderMap(){
-    if(!geo)return;map.replaceChildren();
+    if(!geo)return;
+    if(roadMap){renderRoadPins();$('urbanMapSelection').innerHTML=selectedText();return;}
+    map.replaceChildren();
     for(const area of geo.areas){
       const d=area.rings.map(ring=>ring.map(([lon,lat],i)=>{const [x,y]=projected(lon,lat);return `${i?'L':'M'}${x.toFixed(2)},${y.toFixed(2)}`;}).join('')+'Z').join('');
       const path=svgElement('path',{d,class:'urban-area','data-area':area.name,tabindex:'0',role:'button','aria-label':`${area.name}: add a forecast pin`});
@@ -92,12 +124,15 @@
     $('urbanMapSelection').innerHTML=selectedText();
   }
   async function placePin(event,area,keyboard=false){
-    if(auth?.role!=='student'){status(auth?.role==='instructor'?'Instructor view shows all saved pins.':'Open a student group first to place a pin.');return;}
-    const group=snapshot?.groups[0];if(!group)return;
-    if(group.urban.predictions.length>=6){saveStatus('Maximum six forecast pins per group.');return;}
     let lon,lat;
     if(keyboard)[lon,lat]=area.center;
     else{const point=map.createSVGPoint();point.x=event.clientX;point.y=event.clientY;const local=point.matrixTransform(map.getScreenCTM().inverse());[lon,lat]=unproject(local.x,local.y);}
+    await savePin(lon,lat,area);
+  }
+  async function savePin(lon,lat,area){
+    if(auth?.role!=='student'){status(auth?.role==='instructor'?'Instructor view shows all saved pins.':'Open a student group first to place a pin.');return;}
+    const group=snapshot?.groups[0];if(!group)return;
+    if(group.urban.predictions.length>=6){saveStatus('Maximum six forecast pins per group.');return;}
     const id=newId('l');
     try{const data=await request('/urban/predictions/'+id,'PUT',{lon,lat,municipality:area.name,why:''});selected={groupId:data.groups[0].id,id};renderStudent(data);saveStatus('Pin saved. Add a reason in the forecast list.');}
     catch(error){saveStatus('Could not place pin: '+error.message);}
@@ -118,7 +153,7 @@
     try{const data=await request('/urban/'+kind+'/'+id,'DELETE');row.remove();snapshot=data;if(selected?.id===id)selected=null;renderMap();saveStatus('Removed.');}
     catch(error){saveStatus('Could not remove: '+error.message);}
   });
-  fetch('data/regression-geography.json').then(r=>{if(!r.ok)throw Error('Map data unavailable');return r.json();}).then(data=>{geo=data.victoria;renderMap();}).catch(error=>{status('Greater Victoria map could not load. Refresh the page.',true);console.error(error);});
+  fetch('data/regression-geography.json').then(r=>{if(!r.ok)throw Error('Map data unavailable');return r.json();}).then(data=>{geo=data.victoria;ensureRoadMap();renderMap();}).catch(error=>{status('Greater Victoria map could not load. Refresh the page.',true);console.error(error);});
   try{const saved=JSON.parse(sessionStorage.getItem(key)||'null');if(saved?.name){auth=saved;refresh().then(()=>{if(auth)startPolling();});}}catch{}
 })();
 
