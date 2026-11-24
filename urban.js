@@ -1,6 +1,6 @@
 (() => {
-  const fireTab=document.getElementById('processFireTab'),urbanTab=document.getElementById('processUrbanTab');
-  if (!fireTab || !urbanTab) return;
+  const fireTab=document.getElementById('processFireTab'),urbanTab=document.getElementById('processUrbanTab'),digitalTab=document.getElementById('processDigitalTab');
+  if (!fireTab || !urbanTab || !digitalTab) return;
   const $=id=>document.getElementById(id);
   const API='https://geog328-regression-classroom.skwldnjs57.chatgpt.site';
   const key='geog328-urban-group-v1';
@@ -12,16 +12,18 @@
   const visibleGroups=()=>[...(snapshot?.groups||[]),...(snapshot?.sharedGroups||[])];
   const timingLabel=value=>({short:'Short-term (0–10 years)',medium:'Medium-term (10–20 years)',long:'Long-term (20–30 years)'})[value]||'Timing not selected';
   function activate(name) {
-    const urban=name==='urban';
-    $('processFirePanel').hidden=urban;$('processUrbanPanel').hidden=!urban;
-    fireTab.classList.toggle('active',!urban);urbanTab.classList.toggle('active',urban);
-    fireTab.setAttribute('aria-selected',String(!urban));urbanTab.setAttribute('aria-selected',String(urban));
+    const urban=name==='urban',digital=name==='digital',fire=!urban&&!digital;
+    $('processFirePanel').hidden=!fire;$('processUrbanPanel').hidden=!urban;$('processDigitalPanel').hidden=!digital;
+    fireTab.classList.toggle('active',fire);urbanTab.classList.toggle('active',urban);digitalTab.classList.toggle('active',digital);
+    fireTab.setAttribute('aria-selected',String(fire));urbanTab.setAttribute('aria-selected',String(urban));digitalTab.setAttribute('aria-selected',String(digital));
     if(urban){ensureRoadMap();renderMap();if(roadMap)requestAnimationFrame(()=>roadMap.invalidateSize());}
   }
   fireTab.addEventListener('click',()=>activate('fire'));
   urbanTab.addEventListener('click',()=>activate('urban'));
-  if(new URL(location.href).searchParams.get('activity')==='urban'){
-    document.querySelector('[data-tab="process"]')?.click();activate('urban');
+  digitalTab.addEventListener('click',()=>activate('digital'));
+  const initialActivity=new URL(location.href).searchParams.get('activity');
+  if(initialActivity==='urban'||initialActivity==='digital'){
+    document.querySelector('[data-tab="process"]')?.click();activate(initialActivity);
   }
   const status=(message,error=false)=>{$('urbanStatus').textContent=message;$('urbanStatus').classList.toggle('error',error);};
   const saveStatus=message=>{$('urbanSaveStatus').textContent=message;};
